@@ -19,7 +19,7 @@ def validate_block_chain(bc, difficulty):
 def generate_key_pair(passphrase):
     key = ECC.generate(curve='P-256')
     private_key = key.export_key(passphrase=passphrase, format='PEM', protection="PBKDF2WithHMAC-SHA1AndAES128-CBC")
-    public_key = key.public_key().export_key(format='PEM')
+    public_key = key.public_key().export_key(format='OpenSSH')
     return (public_key, private_key)
 
 class Citizen:
@@ -69,9 +69,9 @@ class Block(Hashable):
             self.hash = self.calculate_hash()
 
 class Vote(Hashable):
-    def __init__(self, voter, votee, inputs):
-        self.voter = voter
-        self.votee = votee
+    def __init__(self, voter_key, votee_key, inputs):
+        self.voter_key = voter_key
+        self.votee_key = votee_key
         self.inputs = inputs
         self.timestamp = str(datetime.utcnow())
         self.cast_vote_count = 1
@@ -79,10 +79,10 @@ class Vote(Hashable):
 
     def get_block_string(self):
         sequence += 1
-        return self.voter + self.votee + self.timestamp + str(self.cast_vote_count) + str(self.sequence)
+        return self.voter_key + self.votee_key + self.timestamp + str(self.cast_vote_count) + str(self.sequence)
 
     def get_signature_data_string(self):
-        return str(self.voter) + str(self.votee) + str(self.cast_vote_count)
+        return self.voter_key + self.votee_key + str(self.cast_vote_count)
 
     def sign_vote(self, private_key, passphrase):
         data = self.get_signature_data_string()
@@ -90,15 +90,15 @@ class Vote(Hashable):
 
     def validate_signature(self):
         data = self.get_signature_data_string()
-        return self.verify_ecc_sig(self.voter.public_key, data, self.signature)
-
-#print(Citizen("dddd").__dict__)
+        return self.verify_ecc_sig(self.voter_key, data, self.signature)
 
 difficulty = 6
 
 voter = Citizen("snicklefritz")
+print(voter.private_key)
+print(voter.public_key)
 votee = Citizen("ztirfelkcins")
-vote = Vote(voter, votee, None)
+vote = Vote(voter.public_key, votee.public_key, None)
 vote.sign_vote(voter.private_key, "snicklefritz")
 print("Transaction sig is valid" if vote.validate_signature() else "Transaction sig is invalid")
 
