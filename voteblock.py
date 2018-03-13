@@ -18,8 +18,8 @@ def validate_block_chain(bc, difficulty):
 
 def generate_key_pair(passphrase):
     key = ECC.generate(curve='P-256')
-    private_key = key.export_key(passphrase=passphrase, format='PEM', protection="PBKDF2WithHMAC-SHA1AndAES128-CBC", compress=True)
-    public_key = key.public_key().export_key(format='PEM', compress=True)
+    private_key = key.export_key(passphrase=passphrase, format='PEM', protection="PBKDF2WithHMAC-SHA1AndAES128-CBC")
+    public_key = key.public_key().export_key(format='PEM')
     return (public_key, private_key)
 
 class Citizen:
@@ -34,17 +34,17 @@ class Hashable:
         hash_object = hashlib.sha256(bytearray(block))
         return hash_object.hexdigest()
 
-    def create_ecc_sig(self, private_key, data):
-        key = ECC.import_key(private_key)
+    def create_ecc_sig(self, private_key, passphrase, data):
+        key = ECC.import_key(private_key, passphrase)
         converted_data = bytearray(data)
         hashed_data = SHA256.new(converted_data)
         signer = DSS.new(key, 'fips-186-3')
         return signer.sign(hashed_data)
 
     def verify_ecc_sig(self, public_key, data, signature):
-        #key = ECC.import_key(public_key)
+        key = ECC.import_key(public_key)
         hashed_message = SHA256.new(data)
-        verifier = DSS.new(public_key, 'fips-186-3')
+        verifier = DSS.new(key, 'fips-186-3')
         try:
             verifier.verify(hashed_message, signature)
             return True
@@ -84,13 +84,13 @@ class Vote(Hashable):
     def get_signature_data_string(self):
         return str(self.voter) + str(self.votee) + str(self.cast_vote_count)
 
-    def sign_vote(self, private_key):
+    def sign_vote(self, private_key, passphrase):
         data = self.get_signature_data_string()
-        self.signature = self.create_ecc_sig(private_key, data)
+        self.signature = self.create_ecc_sig(private_key, passphrase, data)
 
     def validate_signature(self):
         data = self.get_signature_data_string()
-        return verify_ecc_sig(self.voter, data, self.signature)
+        return self.verify_ecc_sig(self.voter.public_key, data, self.signature)
 
 #print(Citizen("dddd").__dict__)
 
@@ -99,7 +99,7 @@ difficulty = 6
 voter = Citizen("snicklefritz")
 votee = Citizen("ztirfelkcins")
 vote = Vote(voter, votee, None)
-vote.sign_vote(voter.public_key)
+vote.sign_vote(voter.private_key, "snicklefritz")
 print("Transaction sig is valid" if vote.validate_signature() else "Transaction sig is invalid")
 
 #
