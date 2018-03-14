@@ -1,14 +1,11 @@
 from Crypto.PublicKey import ECC
 from Crypto.Hash import SHA256
 from Crypto.Signature import DSS
+from utils import hash_str
 
 class Hashable:
     def calculate_hash(self):
-        return self.hash_block(self.get_block_string())
-
-    def hash_block(self, block):
-        hash_object = hashlib.sha256(bytearray(block))
-        return hash_object.hexdigest()
+        return hash_str(self.get_block_string())
 
     def create_ecc_sig(self, private_key, passphrase, data):
         key = ECC.import_key(private_key, passphrase)
